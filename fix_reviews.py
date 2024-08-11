@@ -33,4 +33,23 @@ df_fixed.to_csv(parent_path / 'data' / 'reviews_0-250_corrected.csv', index=Fals
 
 #%%
 
-# Do sentiment data
+# Filter the quality of reviews first
+# Then sample reviews of each product/ingredient for sentiment scoring???
+# -- What number?
+
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+def is_quality_review(text):
+    return len(str(text)) >= 10 or any(char.isalnum() for char in str(text))
+
+def get_sentiment_score(text):
+    analyzer = SentimentIntensityAnalyzer()
+    sentiment_scores = analyzer.polarity_scores(str(text))
+    return sentiment_scores['compound']
+
+df_fixed["is_quality"] = df_fixed["review_text"].apply(is_quality_review)
+df_fixed["sentiment"] = df_fixed["review_text"].apply(get_sentiment_score)
+# pd.set_option('display.max_colwidth', None)
+# df_fixed[["review_text", "is_quality", "sentiment"]]
+
+# %%

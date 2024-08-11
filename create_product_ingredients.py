@@ -11,7 +11,6 @@ with open(parent_path / 'data' / 'product_info.csv', 'r') as input_file:
 
 print(data)
 
-
 #%%
 import ast
 
