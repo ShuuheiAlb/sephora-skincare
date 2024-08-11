@@ -1,0 +1,8 @@
+
+# Hidden data
+__pycache__/
+venv/
+.ipynb_checkpoints/
+
+# Large files "reviews*" : can be installed from https://www.kaggle.com/datasets/nadyinky/sephora-products-and-skincare-reviews
+data/reviews*
