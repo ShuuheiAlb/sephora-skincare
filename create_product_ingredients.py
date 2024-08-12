@@ -13,34 +13,51 @@ print(data)
 
 #%%
 import ast
-
-# Create a list to store the new data
-new_data = []
+import re
 
 # Iterate through the input data
+df_ingredient = []
 for row in data:
     product_id = row['product_id']
+    # Converting string to list format, selecting only single items
     try:
-        # Converting string to list format, selecting only single items
         ingredients = ast.literal_eval(row['ingredients'])
         assert len(ingredients) == 1
-        # Split the ingredients by commas
-        ingredient_list = [x.strip(' ').strip('.') for x in ingredients[0].split(', ')]
+        ingredient_list = re.split(r',\s+', ingredients[0].replace(r"\(.*\)", "").replace(r"\[.*\]", ""))
+        ingredient_list = [_.strip('.') for _ in ingredient_list]
     except:
         ingredient_list = []
     
     # Create a new row for each ingredient
     for ingredient in ingredient_list:
         new_row = {'product-id': product_id, 'ingredient': ingredient}
-        new_data.append(new_row)
+        df_ingredient.append(new_row)
 
+#%%
+# Now for the highlight
+df_highlight = []
+for row in data:
+    product_id = row['product_id']
+    try:
+        highlight_list = ast.literal_eval(row['highlights'])
+    except:
+        highlight_list = []
+    for highlight in highlight_list:
+        new_row = {'product-id': product_id, 'highlight': highlight}
+        df_highlight.append(new_row)
+
+
+#%%
 # Open the output CSV file and write the new data
-with open(parent_path / 'data' / 'product_ingredients.csv', 'w', newline='') as output_file:
-    fieldnames = ['product-id', 'ingredient']
-    writer = csv.DictWriter(output_file, fieldnames=fieldnames)
-    writer.writeheader()
-    writer.writerows(new_data)
+def save_data(new_data, col_name):
+    with open(parent_path / 'data' / f'product_{col_name}s.csv', 'w', newline='') as output_file:
+        fieldnames = ['product-id', col_name]
+        writer = csv.DictWriter(output_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(new_data)
+save_data(df_ingredient, "ingredient")
+save_data(df_highlight, "highlight")
 
 print("Data processing complete!")
+
 # %%
-# Highlights?

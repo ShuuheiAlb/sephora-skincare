@@ -12,30 +12,6 @@ df = pd.read_csv(parent_path / 'data' / 'reviews_0-250.csv')
 print(df)
 
 #%%
-# Assuming problem stems from newlines in review_text
-# Iterate rows with longest number of cols, then merge two cells that belongs to review_text,
-#    until all are merged
-
-TARGET_COLS = 19
-REVIEW_TEXT_COL_IDX = 9
-
-df_fixed = df.copy()
-while df_fixed.shape[1] > TARGET_COLS:
-    problematics = df_fixed.iloc[:, -1].notnull()
-    column_names = df_fixed.columns
-    #print(df_fixed[problematics])
-
-    df_fixed.loc[problematics, column_names[REVIEW_TEXT_COL_IDX]] += "\n" + df_fixed.loc[problematics, column_names[REVIEW_TEXT_COL_IDX+1]].astype(str).to_numpy()
-    df_fixed.loc[problematics, column_names[(REVIEW_TEXT_COL_IDX+1):-1]] = df_fixed.loc[problematics, column_names[(REVIEW_TEXT_COL_IDX+2):]].to_numpy()
-    df_fixed = df_fixed.iloc[:, :-1]
-
-df_fixed.to_csv(parent_path / 'data' / 'reviews_0-250_corrected.csv', index=False)
-
-#%%
-
-# Filter the quality of reviews first
-# Then sample reviews of each product/ingredient for sentiment scoring???
-# -- What number?
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -47,9 +23,32 @@ def get_sentiment_score(text):
     sentiment_scores = analyzer.polarity_scores(str(text))
     return sentiment_scores['compound']
 
-df_fixed["is_quality"] = df_fixed["review_text"].apply(is_quality_review)
-df_fixed["sentiment"] = df_fixed["review_text"].apply(get_sentiment_score)
+# Filter the quality of reviews first, then "rating"!!!
+# Then sample the reviews (5-10%) of each product for sentiment scoring???
+reviews_by_product = df.groupby("product_id")["review_text"].apply(list)
+sampled_reviews = []
+for product_id, review_text in reviews_by_product.items():
+    sampled_review_ = pd.Series(review_text).sample(frac=0.05, random_state=42)
+    sampled_reviews.append(pd.DataFrame({"product_id": product_id, "review_text": sampled_review_.tolist()}))
+sampled_reviews = pd.concat(sampled_reviews, ignore_index=True)
+
+sampled_reviews["is_quality"] = sampled_reviews["review_text"].apply(is_quality_review)
+sampled_reviews["sentiment"] = sampled_reviews["review_text"].apply(get_sentiment_score)
 # pd.set_option('display.max_colwidth', None)
-# df_fixed[["review_text", "is_quality", "sentiment"]]
+# sampled_reviews[["review_text", "is_quality", "sentiment"]]
+sampled_reviews.to_csv(parent_path / 'data' / 'reviews_0-250_sentiment.csv', index=False)
 
 # %%
+
+# Topic modelling
+
+from top2vec import Top2Vec
+
+TOP2VEC_NUM_SAMPLES = 1000
+# Select product_id with categories
+top2vec_sampled_reviews = df["review_text"].dropna().sample(n=TOP2VEC_NUM_SAMPLES, random_state=42)
+docs_bad = top2vec_sampled_reviews.values.tolist()
+topic_model = Top2Vec(docs_bad)
+topic_words, word_scores, topic_nums = topic_model.get_topics(3)
+for topic in topic_nums:
+    topic_model.generate_topic_wordcloud(topic)
