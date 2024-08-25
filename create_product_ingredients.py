@@ -1,14 +1,12 @@
 
 #%%
-import csv
 import pathlib
+import pandas as pd
 
 # Open the product file
-parent_path = pathlib.Path(__file__).parent
-with open(parent_path / 'data' / 'product_info.csv', 'r') as input_file:
-    reader = csv.DictReader(input_file)
-    data = list(reader)
-
+parent_path = Path(__file__).parent
+data = pd.read_csv(parent_path / 'data' / 'product_info.csv')
+data = data[data["primary_category"] == "Skincare"]
 print(data)
 
 #%%
@@ -17,26 +15,28 @@ import re
 
 # Iterate through the input data
 df_ingredient = []
-for row in data:
+for _, row in data.iterrows():
     product_id = row['product_id']
     # Converting string to list format, selecting only single items
     try:
         ingredients = ast.literal_eval(row['ingredients'])
         assert len(ingredients) == 1
+        # (soon: Split with comma except 1,2,2-chemical etc, remove percentage)
+        # Remove brackets: these are "may contain" sections, *contains
         ingredient_list = re.split(r',\s+', ingredients[0].replace(r"\(.*\)", "").replace(r"\[.*\]", ""))
-        ingredient_list = [_.strip('.') for _ in ingredient_list]
+        ingredient_list = [re.sub(r'[0-9]+\%', "", _).strip('. ') for _ in ingredient_list]
     except:
         ingredient_list = []
     
     # Create a new row for each ingredient
-    for ingredient in ingredient_list:
-        new_row = {'product-id': product_id, 'ingredient': ingredient}
+    for i, ingredient in enumerate(ingredient_list):
+        new_row = {'product-id': product_id, 'ingredient': ingredient, 'order': i}
         df_ingredient.append(new_row)
 
 #%%
 # Now for the highlight
 df_highlight = []
-for row in data:
+for _, row in data.iterrows():
     product_id = row['product_id']
     try:
         highlight_list = ast.literal_eval(row['highlights'])
@@ -46,17 +46,11 @@ for row in data:
         new_row = {'product-id': product_id, 'highlight': highlight}
         df_highlight.append(new_row)
 
-
 #%%
-# Open the output CSV file and write the new data
-def save_data(new_data, col_name):
-    with open(parent_path / 'data' / f'product_{col_name}s.csv', 'w', newline='') as output_file:
-        fieldnames = ['product-id', col_name]
-        writer = csv.DictWriter(output_file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(new_data)
-save_data(df_ingredient, "ingredient")
-save_data(df_highlight, "highlight")
+# Write the new data
+data.to_csv(parent_path / 'data' / "skincare_info.csv", index=False, header=True)
+pd.DataFrame(df_ingredient).to_csv(parent_path / 'data' / "skincare_ingredients.csv", index=False, header=True)
+pd.DataFrame(df_highlight).to_csv(parent_path / 'data' / "skincare_highlights.csv", index=False, header=True)
 
 print("Data processing complete!")
 
